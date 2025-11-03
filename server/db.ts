@@ -1,5 +1,6 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import pkg from 'pg';
+const { Pool } = pkg;
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -8,6 +9,10 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Utiliser neon() HTTP client au lieu de Pool/WebSocket pour une meilleure compatibilité
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql, { schema });
+// Utiliser node-postgres (pg) qui fonctionne sur Render, Heroku, etc.
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+export const db = drizzle(pool, { schema });
