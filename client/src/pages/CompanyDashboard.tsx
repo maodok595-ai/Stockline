@@ -4,84 +4,162 @@ import { StatsChart } from "@/components/StatsChart";
 import { StockAlert } from "@/components/StockAlert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useStats, useLowStockProducts, useStockMovements, useProducts } from "@/hooks/use-api";
+import { useMemo } from "react";
+import { format, startOfMonth, subMonths, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export function CompanyDashboard() {
-  const lowStockProducts = [
-    { id: '1', name: 'Riz Parfumé 25kg', quantity: 5, threshold: 10 },
-    { id: '2', name: 'Huile Végétale 5L', quantity: 3, threshold: 8 },
-    { id: '3', name: 'Sucre 1kg', quantity: 12, threshold: 20 },
-  ];
+  const { data: stats, isLoading: statsLoading } = useStats();
+  const { data: lowStockProducts = [], isLoading: lowStockLoading } = useLowStockProducts();
+  const { data: movements = [], isLoading: movementsLoading } = useStockMovements();
+  const { data: products = [], isLoading: productsLoading } = useProducts();
 
-  const monthlyData = [
-    { name: 'Jan', entrees: 40, sorties: 24 },
-    { name: 'Fév', entrees: 30, sorties: 13 },
-    { name: 'Mar', entrees: 20, sorties: 38 },
-    { name: 'Avr', entrees: 27, sorties: 39 },
-    { name: 'Mai', entrees: 18, sorties: 48 },
-    { name: 'Juin', entrees: 23, sorties: 38 },
-  ];
+  // Transformer les produits en stock faible pour StockAlert
+  const lowStockAlerts = useMemo(() => {
+    return lowStockProducts.map(product => ({
+      id: product.id,
+      name: product.name,
+      quantity: product.quantity,
+      threshold: product.minQuantity || 10,
+    }));
+  }, [lowStockProducts]);
 
-  const categoryData = [
-    { name: 'Alimentaire', value: 450 },
-    { name: 'Boissons', value: 280 },
-    { name: 'Hygiène', value: 150 },
-    { name: 'Electronique', value: 95 },
-  ];
+  // Calculer les données mensuelles des mouvements (6 derniers mois)
+  const monthlyData = useMemo(() => {
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const date = subMonths(new Date(), 5 - i);
+      return {
+        month: startOfMonth(date),
+        name: format(date, 'MMM', { locale: fr }),
+        entrees: 0,
+        sorties: 0,
+      };
+    });
 
-  const topProducts = [
-    { name: 'Riz Parfumé 25kg', sales: 245 },
-    { name: 'Huile Végétale 5L', sales: 189 },
-    { name: 'Sucre 1kg', sales: 156 },
-    { name: 'Farine 2kg', sales: 134 },
-    { name: 'Lait en Poudre 900g', sales: 98 },
-  ];
+    movements.forEach(movement => {
+      const movementDate = startOfMonth(parseISO(movement.createdAt));
+      const monthData = last6Months.find(
+        m => m.month.getTime() === movementDate.getTime()
+      );
+      
+      if (monthData) {
+        if (movement.type === 'entree') {
+          monthData.entrees += 1;
+        } else {
+          monthData.sorties += 1;
+        }
+      }
+    });
 
-  const recentMovements = [
-    { id: '1', type: 'Entrée', product: 'Riz Parfumé 25kg', quantity: 50, user: 'Amadou D.', date: 'Il y a 2h' },
-    { id: '2', type: 'Sortie', product: 'Huile Végétale 5L', quantity: 20, user: 'Fatou S.', date: 'Il y a 3h' },
-    { id: '3', type: 'Entrée', product: 'Sucre 1kg', quantity: 100, user: 'Moussa K.', date: 'Il y a 5h' },
-  ];
+    return last6Months.map(({ name, entrees, sorties }) => ({ name, entrees, sorties }));
+  }, [movements]);
+
+  // Calculer la répartition par catégorie
+  const categoryData = useMemo(() => {
+    const categoryMap = new Map<string, number>();
+    
+    products.forEach(product => {
+      const category = product.categoryId || 'Sans catégorie';
+      categoryMap.set(category, (categoryMap.get(category) || 0) + product.quantity);
+    });
+
+    return Array.from(categoryMap.entries()).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [products]);
+
+  // Top 5 produits par quantité
+  const topProducts = useMemo(() => {
+    return [...products]
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5)
+      .map(product => ({
+        name: product.name,
+        quantity: product.quantity,
+      }));
+  }, [products]);
+
+  // Mouvements récents (derniers 5)
+  const recentMovements = useMemo(() => {
+    return [...movements]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(movement => {
+        const product = products.find(p => p.id === movement.productId);
+        const now = new Date();
+        const movementDate = new Date(movement.createdAt);
+        const diffHours = Math.floor((now.getTime() - movementDate.getTime()) / (1000 * 60 * 60));
+        
+        let timeAgo;
+        if (diffHours < 1) {
+          const diffMinutes = Math.floor((now.getTime() - movementDate.getTime()) / (1000 * 60));
+          timeAgo = `Il y a ${diffMinutes}min`;
+        } else if (diffHours < 24) {
+          timeAgo = `Il y a ${diffHours}h`;
+        } else {
+          const diffDays = Math.floor(diffHours / 24);
+          timeAgo = `Il y a ${diffDays}j`;
+        }
+        
+        return {
+          id: movement.id,
+          type: movement.type === 'entree' ? 'Entrée' : 'Sortie',
+          product: product?.name || 'Produit supprimé',
+          quantity: movement.quantity,
+          date: timeAgo,
+        };
+      });
+  }, [movements, products]);
+
+  const isLoading = statsLoading || lowStockLoading || movementsLoading || productsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement du tableau de bord...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold">Tableau de Bord</h1>
+        <h1 className="text-3xl font-bold" data-testid="title-dashboard">Tableau de Bord</h1>
         <p className="text-muted-foreground mt-1">
           Vue d'ensemble de votre gestion de stock
         </p>
       </div>
 
-      <StockAlert products={lowStockProducts} />
+      {lowStockAlerts.length > 0 && <StockAlert products={lowStockAlerts} />}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="Produits Total"
-          value="1,248"
+          value={stats?.totalProducts.toString() || "0"}
           icon={Package}
-          change={12}
-          trend="up"
-          subtitle="vs mois dernier"
+          subtitle="dans l'inventaire"
         />
         <KPICard
           title="Valeur du Stock"
-          value="12.5M FCFA"
+          value={`${(stats?.totalValue || 0).toLocaleString('fr-FR')} FCFA`}
           icon={TrendingUp}
-          change={8}
-          trend="up"
           subtitle="estimation totale"
         />
         <KPICard
           title="Alertes de Stock"
-          value={lowStockProducts.length}
+          value={stats?.lowStockAlerts || 0}
           icon={AlertTriangle}
           subtitle="produits en stock faible"
         />
         <KPICard
           title="Mouvements du Mois"
-          value="345"
+          value={stats?.movementsThisMonth.toString() || "0"}
           icon={Activity}
-          change={5}
-          trend="down"
           subtitle="entrées et sorties"
         />
       </div>
@@ -109,19 +187,25 @@ export function CompanyDashboard() {
             <CardTitle className="text-lg font-semibold">Top 5 Produits</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded bg-primary/10 font-mono text-sm font-bold text-primary">
-                      {index + 1}
+            {topProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Aucun produit disponible
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {topProducts.map((product, index) => (
+                  <div key={index} className="flex items-center justify-between" data-testid={`product-top-${index}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded bg-primary/10 font-mono text-sm font-bold text-primary">
+                        {index + 1}
+                      </div>
+                      <span className="text-sm font-medium">{product.name}</span>
                     </div>
-                    <span className="text-sm font-medium">{product.name}</span>
+                    <span className="font-mono text-sm font-semibold">{product.quantity} unités</span>
                   </div>
-                  <span className="font-mono text-sm font-semibold">{product.sales} ventes</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -130,23 +214,30 @@ export function CompanyDashboard() {
             <CardTitle className="text-lg font-semibold">Mouvements Récents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentMovements.map((movement) => (
-                <div key={movement.id} className="flex flex-col gap-1 pb-3 border-b last:border-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{movement.product}</span>
-                    <Badge variant={movement.type === 'Entrée' ? 'default' : 'secondary'}>
-                      {movement.type}
-                    </Badge>
+            {recentMovements.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Aucun mouvement récent
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {recentMovements.map((movement) => (
+                  <div key={movement.id} className="flex items-center justify-between" data-testid={`movement-${movement.id}`}>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={movement.type === 'Entrée' ? 'default' : 'secondary'}>
+                        {movement.type}
+                      </Badge>
+                      <div>
+                        <p className="text-sm font-medium">{movement.product}</p>
+                        <p className="text-xs text-muted-foreground">{movement.date}</p>
+                      </div>
+                    </div>
+                    <span className="font-mono text-sm font-semibold">
+                      {movement.type === 'Entrée' ? '+' : '-'}{movement.quantity}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Quantité: <span className="font-mono font-semibold">{movement.quantity}</span></span>
-                    <span>{movement.user}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{movement.date}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

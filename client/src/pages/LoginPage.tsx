@@ -10,13 +10,19 @@ import { useLocation } from "wouter";
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
-  const [, setLocation] = useLocation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, password);
-    setLocation("/dashboard");
+    setIsLoading(true);
+    try {
+      await login(email, password);
+    } catch (error) {
+      // Error is handled in AuthContext with toast
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -61,8 +67,8 @@ export function LoginPage() {
                 data-testid="input-password"
               />
             </div>
-            <Button type="submit" className="w-full" data-testid="button-login">
-              Se connecter
+            <Button type="submit" className="w-full" disabled={isLoading} data-testid="button-login">
+              {isLoading ? "Connexion..." : "Se connecter"}
             </Button>
           </form>
           <div className="mt-6 text-center">

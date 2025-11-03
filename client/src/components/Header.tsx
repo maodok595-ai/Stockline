@@ -13,6 +13,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(word => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
@@ -42,7 +51,7 @@ export function Header() {
             <Button variant="ghost" size="icon" data-testid="button-user-menu">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {user?.avatar || 'U'}
+                  {user?.avatar || (user?.name ? getInitials(user.name) : 'U')}
                 </AvatarFallback>
               </Avatar>
             </Button>

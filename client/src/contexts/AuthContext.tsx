@@ -1,57 +1,90 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: 'super_admin' | 'admin_entreprise' | 'employe';
-  tenantId?: string;
-  companyName?: string;
+  companyId?: string;
+  isActive: boolean;
   avatar?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => void;
-  logout: () => void;
-  switchRole: (role: User['role']) => void;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>({
-    id: '1',
-    name: 'Amadou Diallo',
-    email: 'amadou@stockline.sn',
-    role: 'admin_entreprise',
-    tenantId: 'company-1',
-    companyName: 'Diallo Distribution',
-    avatar: 'AD'
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-  const login = (email: string, password: string) => {
-    console.log('Login:', email, password);
-    setUser({
-      id: '1',
-      name: 'Amadou Diallo',
-      email,
-      role: 'admin_entreprise',
-      tenantId: 'company-1',
-      companyName: 'Diallo Distribution',
-      avatar: 'AD'
-    });
+  // Vérifier si l'utilisateur est déjà connecté au chargement
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/me', {
+        credentials: 'include',
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      // Utilisateur non connecté
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    console.log('Logout');
-    setUser(null);
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await apiRequest('POST', '/api/auth/login', { email, password });
+      const data = await res.json();
+      setUser(data.user);
+      
+      toast({
+        title: 'Connexion réussie',
+        description: `Bienvenue ${data.user.name} !`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur de connexion',
+        description: error.message || 'Email ou mot de passe incorrect',
+      });
+      throw error;
+    }
   };
 
-  const switchRole = (role: User['role']) => {
-    if (user) {
-      setUser({ ...user, role });
+  const logout = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout', {});
+      setUser(null);
+      
+      toast({
+        title: 'Déconnexion réussie',
+        description: 'À bientôt !',
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: error.message || 'Erreur lors de la déconnexion',
+      });
     }
   };
 
@@ -59,9 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       isAuthenticated: !!user, 
+      isLoading,
       login, 
       logout,
-      switchRole 
     }}>
       {children}
     </AuthContext.Provider>
