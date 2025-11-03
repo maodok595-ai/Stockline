@@ -236,17 +236,18 @@ export function SuperAdminDashboard() {
   const inactiveCompanies = companies.filter(c => !c.isActive);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-6 p-4 md:p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Administration Globale</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Administration Globale</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Gérez toutes les entreprises de la plateforme StockLine
           </p>
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
           data-testid="button-create-company"
+          className="w-full md:w-auto shrink-0"
         >
           <Plus className="h-4 w-4 mr-2" />
           Nouvelle Entreprise

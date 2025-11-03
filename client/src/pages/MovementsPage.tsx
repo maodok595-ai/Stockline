@@ -134,20 +134,20 @@ export function MovementsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="flex flex-col gap-6 p-4 md:p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Mouvements de Stock</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Mouvements de Stock</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Historique des entrées et sorties
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" data-testid="button-export">
+        <div className="flex gap-2 w-full md:w-auto">
+          <Button variant="outline" data-testid="button-export" className="flex-1 md:flex-none">
             <Download className="h-4 w-4 mr-2" />
             Exporter
           </Button>
-          <Button onClick={handleOpenDialog} data-testid="button-add-movement">
+          <Button onClick={handleOpenDialog} data-testid="button-add-movement" className="flex-1 md:flex-none">
             <Plus className="h-4 w-4 mr-2" />
             Nouveau Mouvement
           </Button>

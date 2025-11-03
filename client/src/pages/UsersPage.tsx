@@ -178,15 +178,15 @@ export function UsersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="flex flex-col gap-6 p-4 md:p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Utilisateurs</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Utilisateurs</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Gérez les utilisateurs de votre entreprise
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()} data-testid="button-add-user">
+        <Button onClick={() => handleOpenDialog()} data-testid="button-add-user" className="w-full md:w-auto shrink-0">
           <Plus className="h-4 w-4 mr-2" />
           Ajouter un Utilisateur
         </Button>
