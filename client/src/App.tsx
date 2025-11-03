@@ -9,16 +9,19 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Header } from "@/components/Header";
 import { LoginPage } from "@/pages/LoginPage";
+import { RegisterPage } from "@/pages/RegisterPage";
 import { CompanyDashboard } from "@/pages/CompanyDashboard";
 import { ProductsPage } from "@/pages/ProductsPage";
 import { MovementsPage } from "@/pages/MovementsPage";
 import { UsersPage } from "@/pages/UsersPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SuperAdminDashboard } from "@/pages/SuperAdminDashboard";
+import { useLocation } from "wouter";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -32,6 +35,9 @@ function Router() {
   }
 
   if (!isAuthenticated) {
+    if (location === "/register") {
+      return <RegisterPage />;
+    }
     return <LoginPage />;
   }
 

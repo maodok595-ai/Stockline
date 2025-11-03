@@ -46,9 +46,22 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const registerCompanySchema = z.object({
+  // Données de l'entreprise
+  companyName: z.string().min(2, "Le nom de l'entreprise doit contenir au moins 2 caractères"),
+  companyEmail: z.string().email("Email de l'entreprise invalide"),
+  companyPhone: z.string().optional(),
+  companyAddress: z.string().optional(),
+  // Données de l'administrateur
+  adminName: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  adminEmail: z.string().email("Email invalide"),
+  adminPassword: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type LoginData = z.infer<typeof loginSchema>;
+export type RegisterCompanyData = z.infer<typeof registerCompanySchema>;
 
 // Table des catégories de produits
 export const categories = pgTable("categories", {

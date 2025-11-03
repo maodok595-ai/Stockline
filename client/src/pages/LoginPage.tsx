@@ -12,6 +12,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const [, setLocation] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +73,12 @@ export function LoginPage() {
             </Button>
           </form>
           <div className="mt-6 text-center">
-            <Button variant="ghost" className="text-sm" data-testid="link-register">
+            <Button 
+              variant="ghost" 
+              className="text-sm" 
+              onClick={() => setLocation("/register")}
+              data-testid="link-register"
+            >
               Créer un compte entreprise
             </Button>
           </div>

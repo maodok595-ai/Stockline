@@ -13,6 +13,7 @@ import {
   insertStockMovementSchema,
   insertSupplierSchema,
   loginSchema,
+  registerCompanySchema,
 } from "@shared/schema";
 
 // Configuration de l'upload de fichiers
@@ -187,6 +188,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ error: "Email déjà utilisé" });
       }
       res.status(500).json({ error: "Erreur serveur" });
+    }
+  });
+
+  // Register Company (création d'une entreprise avec son premier admin)
+  app.post("/api/auth/register-company", async (req, res) => {
+    try {
+      const parsed = registerCompanySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Données invalides", details: parsed.error.errors });
+      }
+
+      const { companyName, companyEmail, companyPhone, companyAddress, adminName, adminEmail, adminPassword } = parsed.data;
+
+      // Créer l'entreprise
+      const company = await storage.createCompany({
+        name: companyName,
+        email: companyEmail,
+        phone: companyPhone,
+        address: companyAddress,
+        isActive: true,
+      });
+
+      // Créer l'utilisateur admin de l'entreprise
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const admin = await storage.createUser({
+        companyId: company.id,
+        name: adminName,
+        email: adminEmail,
+        password: hashedPassword,
+        role: "admin_entreprise",
+        isActive: true,
+      });
+
+      // Connecter automatiquement l'utilisateur
+      req.session.userId = admin.id;
+      req.session.companyId = company.id;
+      req.session.role = admin.role;
+
+      const { password: _, ...adminWithoutPassword } = admin;
+      res.status(201).json({ 
+        company,
+        user: adminWithoutPassword,
+        message: "Entreprise créée avec succès"
+      });
+    } catch (error: any) {
+      console.error("Erreur register company:", error);
+      if (error.message?.includes("unique")) {
+        return res.status(409).json({ error: "Email déjà utilisé" });
+      }
+      res.status(500).json({ error: "Erreur lors de la création de l'entreprise" });
     }
   });
 
