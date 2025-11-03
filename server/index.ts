@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -11,9 +12,20 @@ declare module 'http' {
   }
 }
 
+// Configuration du store de sessions PostgreSQL pour la production
+const PgStore = connectPgSimple(session);
+const sessionStore = process.env.NODE_ENV === "production" && process.env.DATABASE_URL
+  ? new PgStore({
+      conString: process.env.DATABASE_URL,
+      tableName: "session",
+      createTableIfMissing: true,
+    })
+  : undefined;
+
 // Configuration des sessions
 app.use(
   session({
+    store: sessionStore,
     secret: process.env.SESSION_SECRET || "stockline-secret-key-change-me-in-production",
     resave: false,
     saveUninitialized: false,
