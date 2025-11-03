@@ -68,7 +68,7 @@ function requireSuperAdmin(req: Request, res: Response, next: Function) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Servir les fichiers uploadés de manière sécurisée
+  // Servir les fichiers uploadés de manière sécurisée (protection contre path traversal)
   app.use("/uploads", (req, res) => {
     // Supprimer le "/" initial pour éviter que path.resolve ignore uploadDir
     const requestedPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
