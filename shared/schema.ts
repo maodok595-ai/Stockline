@@ -15,7 +15,13 @@ export const companies = pgTable("companies", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertCompanySchema = createInsertSchema(companies).omit({
+export const insertCompanySchema = createInsertSchema(companies, {
+  // Transformer pour convertir les chaînes en booléens (compatibilité FormData)
+  isActive: z.union([z.boolean(), z.string()]).transform(val => {
+    if (typeof val === 'string') return val === 'true';
+    return val;
+  }),
+}).omit({
   id: true,
   createdAt: true,
 });
