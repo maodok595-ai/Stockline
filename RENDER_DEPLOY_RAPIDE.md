@@ -29,17 +29,20 @@ git push origin main
      ```
 
 3. **Variables d'Environnement**
-   ```
-   NODE_ENV=production
-   PORT=10000
-   DATABASE_URL=[Coller l'URL de la DB]
-   SESSION_SECRET=[Générer un secret aléatoire]
-   ```
-
+   
+   **Seulement 2 variables nécessaires** :
+   
+   | Variable | Valeur |
+   |----------|--------|
+   | `DATABASE_URL` | Coller l'Internal Database URL de votre PostgreSQL Render |
+   | `SESSION_SECRET` | Générer un secret aléatoire |
+   
    **Générer SESSION_SECRET** :
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
+   
+   ⚠️ **Note** : `NODE_ENV` et `PORT` sont gérés automatiquement par Render - ne les ajoutez pas !
 
 ### 3️⃣ Initialiser la Base de Données
 

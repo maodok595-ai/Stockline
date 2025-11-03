@@ -46,14 +46,14 @@
 
 #### 3. Variables d'Environnement
 
-Dans l'onglet "Environment" du service web, ajoutez :
+Dans l'onglet "Environment" du service web, ajoutez **uniquement ces 2 variables** :
 
 | Variable | Valeur |
 |----------|--------|
-| `NODE_ENV` | `production` |
-| `PORT` | `10000` |
 | `DATABASE_URL` | *Coller l'Internal Database URL de l'étape 1* |
 | `SESSION_SECRET` | *Générer un secret aléatoire* |
+
+⚠️ **Important** : N'ajoutez **PAS** `NODE_ENV` ni `PORT` - Render les gère automatiquement !
 
 **Pour générer SESSION_SECRET** :
 ```bash
