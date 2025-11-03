@@ -1,8 +1,6 @@
-import { neon } from '@neondatabase/serverless';
+import pkg from 'pg';
+const { Pool } = pkg;
 import bcrypt from 'bcryptjs';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { migrate } from 'drizzle-orm/neon-http/migrator';
-import * as schema from '../shared/schema';
 
 const log = (message: string) => {
   console.log(`[AUTO-SETUP] ${message}`);
@@ -14,22 +12,27 @@ export async function autoSetup() {
     return;
   }
 
+  let pool: typeof Pool.prototype | null = null;
+
   try {
     log('🚀 Démarrage de la configuration automatique...');
     
-    const sql = neon(process.env.DATABASE_URL);
-    const db = drizzle(sql, { schema });
+    // Connexion PostgreSQL standard (fonctionne sur Render)
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    });
 
     // 1. Vérifier si les tables existent
     log('📋 Vérification des tables...');
-    const tables = await sql`
+    const tablesResult = await pool.query(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
       ORDER BY table_name
-    `;
+    `);
     
-    const tableNames = tables.map((t: any) => t.table_name);
+    const tableNames = tablesResult.rows.map((t: any) => t.table_name);
     const requiredTables = ['users', 'companies', 'products', 'categories', 'stock_movements', 'suppliers'];
     const missingTables = requiredTables.filter(t => !tableNames.includes(t));
 
@@ -38,7 +41,7 @@ export async function autoSetup() {
       log('📦 Création automatique des tables...');
       
       // Créer les tables directement
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS companies (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
           name TEXT NOT NULL,
@@ -49,9 +52,9 @@ export async function autoSetup() {
           is_active BOOLEAN NOT NULL DEFAULT true,
           created_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
-      `;
+      `);
 
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
           company_id VARCHAR REFERENCES companies(id) ON DELETE CASCADE,
@@ -63,9 +66,9 @@ export async function autoSetup() {
           is_active BOOLEAN NOT NULL DEFAULT true,
           created_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
-      `;
+      `);
 
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS categories (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
           company_id VARCHAR NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -73,9 +76,9 @@ export async function autoSetup() {
           description TEXT,
           created_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
-      `;
+      `);
 
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS suppliers (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
           company_id VARCHAR NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -85,9 +88,9 @@ export async function autoSetup() {
           address TEXT,
           created_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
-      `;
+      `);
 
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS products (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
           company_id VARCHAR NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -105,9 +108,9 @@ export async function autoSetup() {
           created_at TIMESTAMP NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
-      `;
+      `);
 
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS stock_movements (
           id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
           company_id VARCHAR NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -120,7 +123,7 @@ export async function autoSetup() {
           notes TEXT,
           created_at TIMESTAMP NOT NULL DEFAULT NOW()
         )
-      `;
+      `);
 
       log('✅ Toutes les tables créées avec succès!');
     } else {
@@ -129,48 +132,48 @@ export async function autoSetup() {
 
     // 2. Créer la table session si elle n'existe pas (pour connect-pg-simple)
     log('📋 Vérification de la table session...');
-    await sql`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS session (
         sid VARCHAR NOT NULL PRIMARY KEY,
         sess JSON NOT NULL,
         expire TIMESTAMP(6) NOT NULL
       )
-    `;
-    await sql`
+    `);
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire)
-    `;
+    `);
     log('✅ Table session configurée');
 
     // 3. Vérifier si le super admin existe
     log('📋 Vérification du super admin...');
-    const admins = await sql`
+    const adminsResult = await pool.query(`
       SELECT id, email FROM users WHERE role = 'super_admin' LIMIT 1
-    `;
+    `);
 
-    if (admins.length === 0) {
+    if (adminsResult.rows.length === 0) {
       log('⚠️  Aucun super admin trouvé');
       log('👤 Création du super admin maodok595@gmail.com...');
       
       const hashedPassword = await bcrypt.hash('Ndiay65@@', 10);
       
-      await sql`
+      await pool.query(`
         INSERT INTO users (name, email, password, role, is_active)
-        VALUES ('Super Admin', 'maodok595@gmail.com', ${hashedPassword}, 'super_admin', true)
-      `;
+        VALUES ($1, $2, $3, $4, $5)
+      `, ['Super Admin', 'maodok595@gmail.com', hashedPassword, 'super_admin', true]);
       
       log('✅ Super admin créé avec succès!');
       log('   📧 Email: maodok595@gmail.com');
       log('   🔑 Mot de passe: Ndiay65@@');
     } else {
-      log(`✅ Super admin existe déjà: ${admins[0].email}`);
+      log(`✅ Super admin existe déjà: ${adminsResult.rows[0].email}`);
       
       // Réinitialiser le mot de passe au cas où
       const hashedPassword = await bcrypt.hash('Ndiay65@@', 10);
-      await sql`
+      await pool.query(`
         UPDATE users 
-        SET password = ${hashedPassword}, is_active = true
-        WHERE email = 'maodok595@gmail.com'
-      `;
+        SET password = $1, is_active = true
+        WHERE email = $2
+      `, [hashedPassword, 'maodok595@gmail.com']);
       log('✅ Mot de passe du super admin réinitialisé');
     }
 
@@ -192,5 +195,10 @@ export async function autoSetup() {
     log('   1. Vérifier DATABASE_URL dans les variables d\'environnement');
     log('   2. Vérifier que la base PostgreSQL est accessible');
     log('');
+  } finally {
+    // Fermer la connexion pool
+    if (pool) {
+      await pool.end();
+    }
   }
 }
