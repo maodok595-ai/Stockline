@@ -7,6 +7,9 @@ import { autoSetup } from "./auto-setup";
 
 const app = express();
 
+// Faire confiance au proxy Render (requis pour HTTPS et cookies sécurisés)
+app.set('trust proxy', 1);
+
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
