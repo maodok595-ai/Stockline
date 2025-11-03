@@ -17,8 +17,8 @@ interface CompanyCardProps {
   email: string;
   phone: string;
   logo?: string;
-  usersCount: number;
-  productsCount: number;
+  usersCount?: number;
+  productsCount?: number;
   isActive: boolean;
   onToggleStatus: () => void;
   onEdit: () => void;
@@ -79,14 +79,18 @@ export function CompanyCard({
             <Users className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Utilisateurs</span>
-              <span className="font-mono font-semibold">{usersCount}</span>
+              <span className="font-mono font-semibold">
+                {usersCount !== undefined && usersCount !== 0 ? usersCount : "-"}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">Produits</span>
-              <span className="font-mono font-semibold">{productsCount}</span>
+              <span className="font-mono font-semibold">
+                {productsCount !== undefined && productsCount !== 0 ? productsCount : "-"}
+              </span>
             </div>
           </div>
         </div>

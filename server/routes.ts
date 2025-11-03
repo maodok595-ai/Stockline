@@ -68,10 +68,24 @@ function requireSuperAdmin(req: Request, res: Response, next: Function) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Servir les fichiers uploadés
-  app.use("/uploads", (req, res, next) => {
-    const filePath = path.join(uploadDir, req.path);
-    res.sendFile(filePath, (err) => {
+  // Servir les fichiers uploadés de manière sécurisée
+  app.use("/uploads", (req, res) => {
+    // Supprimer le "/" initial pour éviter que path.resolve ignore uploadDir
+    const requestedPath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
+    
+    // Normaliser et résoudre le chemin complet
+    const fullPath = path.resolve(uploadDir, requestedPath);
+    
+    // Protection robuste contre path traversal : vérifier que le chemin reste dans uploadDir
+    const relativePath = path.relative(uploadDir, fullPath);
+    const isInside = relativePath && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+    
+    if (!isInside) {
+      return res.status(403).json({ error: "Accès refusé" });
+    }
+    
+    // Servir le fichier de manière sécurisée
+    res.sendFile(fullPath, (err) => {
       if (err) {
         res.status(404).json({ error: "Fichier non trouvé" });
       }
