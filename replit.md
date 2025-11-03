@@ -8,6 +8,15 @@ StockLine est une application SaaS professionnelle de gestion d'inventaire conç
 
 ### ✅ Fonctionnalités complétées (03 novembre 2025)
 
+#### 🚀 DÉPLOIEMENT AUTOMATIQUE (NOUVEAU !)
+
+- **Auto-Setup** : Configuration automatique au premier démarrage en production
+  - Création automatique de toutes les tables
+  - Création automatique du super admin (maodok595@gmail.com)
+  - Réinitialisation automatique du mot de passe si existant
+  - Aucune commande manuelle requise sur Render
+  - Smart detection : skip si déjà configuré
+
 #### Backend (Node.js + Express + PostgreSQL)
 - **Base de données** : Schéma complet avec Drizzle ORM (companies, users, products, categories, stock_movements, suppliers)
 - **Authentification** : Login/Register avec bcrypt + sessions Express

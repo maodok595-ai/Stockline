@@ -3,6 +3,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { autoSetup } from "./auto-setup";
 
 const app = express();
 
@@ -75,6 +76,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Configuration automatique en production (création tables + super admin)
+  if (process.env.NODE_ENV === "production") {
+    await autoSetup();
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
